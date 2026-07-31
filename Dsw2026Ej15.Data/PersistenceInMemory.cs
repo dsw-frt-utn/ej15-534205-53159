@@ -1,68 +1,74 @@
-﻿using Dsw2026Ej15.Domain;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Numerics;
+using Dsw2026Ej15.Domain;
 using System.Text.Json;
 
-namespace Dsw2026Ej15.Data
+namespace Dsw2026Ej15.Data;
+
+public class PersistenceInMemory : IPersistence
 {
-    public class PersistenceInMemory : IPersistence
+    private readonly List<Doctor> _doctors = new();
+    private readonly List<Speciality> _specialities = new();
+
+    public PersistenceInMemory()
     {
-        private readonly List<Doctor> _doctors = new List<Doctor>();
-        private readonly List<Speciality> _specialities = new List<Speciality>();
+        LoadSpecialities();
+    }
 
-        public PersistenceInMemory()
+    private void LoadSpecialities()
+    {
+        try
         {
-            
-            try
+            string[] possiblePaths =
             {
-                string json = File.ReadAllText("doctors.json");
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                _doctors = JsonSerializer.Deserialize<List<Doctor>>(json, options) ?? new List<Doctor>();
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "specialities.json"),
+                "specialities.json",
+                Path.Combine(Directory.GetCurrentDirectory(), "specialities.json"),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "specialities.json")
+            };
 
-              
-                foreach (var doctor in _doctors)
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
                 {
-                    if (doctor.Speciality != null && !_specialities.Any(s => s.Id == doctor.Speciality.Id))
+                    string json = File.ReadAllText(path);
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var list = JsonSerializer.Deserialize<List<Speciality>>(json, options);
+                    if (list != null && list.Count > 0)
                     {
-                        _specialities.Add(doctor.Speciality);
+                        _specialities.Clear();
+                        _specialities.AddRange(list);
+                        break;
                     }
                 }
             }
-            catch (Exception)
-            {
-               
-                _doctors = new List<Doctor>();
-                _specialities = new List<Speciality>();
-            }
         }
-
-        public IEnumerable<Speciality> GetAllSpecialities()
+        catch
         {
-            return _specialities;
+            // Ignore if file cannot be read
         }
+    }
 
-        public IEnumerable<Doctor> GetActiveDoctors()
-        {
-            return _doctors.Where(d => d.IsActive).ToList();
-        }
+    public IEnumerable<Speciality> GetAllSpecialities() => _specialities;
 
-        public Doctor GetActiveDoctorById(Guid id)
-        {
-            return _doctors.FirstOrDefault(d => d.Id == id && d.IsActive);
-        }
+    public Speciality? GetSpecialityById(Guid id) => _specialities.FirstOrDefault(s => s.Id == id);
 
-        public bool DeactivateDoctor(Guid id)
+    public IEnumerable<Doctor> GetActiveDoctors() => _doctors.Where(d => d.IsActive).ToList();
+
+    public Doctor? GetActiveDoctorById(Guid id) => _doctors.FirstOrDefault(d => d.Id == id && d.IsActive);
+
+    public Doctor AddDoctor(Doctor doctor)
+    {
+        _doctors.Add(doctor);
+        return doctor;
+    }
+
+    public bool DeactivateDoctor(Guid id)
+    {
+        var doctor = _doctors.FirstOrDefault(d => d.Id == id && d.IsActive);
+        if (doctor != null)
         {
-            var doctor = _doctors.FirstOrDefault(d => d.Id == id && d.IsActive);
-            if (doctor != null)
-            {
-                doctor.IsActive = false;
-                return true; 
-            }
-            return false; 
+            doctor.IsActive = false;
+            return true;
         }
+        return false;
     }
 }

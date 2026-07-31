@@ -1,14 +1,12 @@
-﻿using Dsw2026Ej15.Domain;
-using Dsw2026Ej15.Data;
 using Dsw2026Ej15.Api.Middlewares;
+using Dsw2026Ej15.Data;
+using Dsw2026Ej15.Domain;
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 builder.Services.AddSingleton<IPersistence, PersistenceInMemory>();
 
@@ -23,9 +21,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-
 app.UseMiddleware<ExceptionMiddleware>();
-
 
 app.MapGet("/health-check", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
 
